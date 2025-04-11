@@ -4,19 +4,26 @@ const axios = require("axios");
 const app = express();
 app.use(express.json());
 
-// Lấy PAGE_ACCESS_TOKEN từ biến môi trường (sẽ cấu hình trên Render)
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 
 app.post("/send-message", async (req, res) => {
-    const { recipient_id, message_text } = req.body;
+    const { recipient_id, message_text, quick_replies } = req.body;
 
     if (!recipient_id || !message_text) {
         return res.status(400).json({ error: "Missing recipient_id or message_text" });
     }
 
+    const message = {
+        text: message_text
+    };
+
+    if (quick_replies) {
+        message.quick_replies = quick_replies;
+    }
+
     const payload = {
         recipient: { id: recipient_id },
-        message: { text: message_text },
+        message: message,
         messaging_type: "RESPONSE"
     };
 
