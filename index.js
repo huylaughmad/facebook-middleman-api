@@ -9,15 +9,22 @@ const WEBHOOK_URL = "https://huylaughmad-chatbot.hf.space/webhook";
 const PAGE_ACCESS_TOKEN = "EAAeHPqDD8X4BO06OyYjGwZAv8IBkdMHlRXJMXqd3PBkDx1LocDZC4X1h7ZB19VirpXEVUUZBBZBF7UtruWpUdcgQQOjfsxw9O9BG5EYIkoK2iVZATnSSgRv8duVyfDGk0W5fJQypdBIikoB414joTfVOWLPqmKGuZBypqwS3NHZCSgKbKD6K6ceZAJB9ifMZBY96g2TYEDcWjHpFZCDg8XDpQZDZD";
 
 const axiosInstance = axios.create({
-    timeout: 15000,
+    timeout: 60000, // Tăng timeout lên 60 giây để chờ Hugging Face Spaces khởi động
 });
 
 const retryRequest = async (config, retries = 5, delay = 3000) => {
     for (let i = 0; i < retries; i++) {
         try {
-            return await axiosInstance(config);
+            console.log(`Attempt ${i + 1}/${retries} to ${config.url} with method ${config.method}`);
+            const response = await axiosInstance(config);
+            console.log(`Request to ${config.url} succeeded with status: ${response.status}`);
+            return response;
         } catch (error) {
-            if (i === retries - 1) throw error;
+            console.error(`Attempt ${i + 1}/${retries} failed: ${error.message}`);
+            if (i === retries - 1) {
+                console.error(`All ${retries} attempts failed for ${config.url}: ${error.message}`);
+                throw error;
+            }
             console.log(`Retrying request (${i + 1}/${retries}) after ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -30,11 +37,14 @@ app.get('/keep-alive', (req, res) => {
     res.status(200).send('OK');
 });
 
+// Xác minh webhook
 app.get('/webhook', (req, res) => {
     const VERIFY_TOKEN = "TTL1979";
     let mode = req.query['hub.mode'];
     let token = req.query['hub.verify_token'];
     let challenge = req.query['hub.challenge'];
+
+    console.log(`Received webhook verification request: mode=${mode}, token=${token}, challenge=${challenge}`);
 
     if (mode && token) {
         if (mode === 'subscribe' && token === VERIFY_TOKEN) {
@@ -50,18 +60,33 @@ app.get('/webhook', (req, res) => {
     }
 });
 
+// Xử lý webhook từ Facebook
 app.post('/webhook', (req, res) => {
     let body = req.body;
     console.log(`Received event from Facebook: ${JSON.stringify(body)}`);
 
     if (body.object === 'page') {
+        if (!body.entry || !Array.isArray(body.entry)) {
+            console.error('Invalid entry in payload: missing or not an array');
+            return res.status(400).send('Invalid payload');
+        }
+
         body.entry.forEach(entry => {
+            if (!entry.messaging || !Array.isArray(entry.messaging)) {
+                console.error(`Invalid messaging in entry: ${JSON.stringify(entry)}`);
+                return;
+            }
+
             entry.messaging.forEach(event => {
                 if (event.postback) {
                     const payload = event.postback.payload;
-                    console.log(`Received postback event: Sender ID=${event.sender.id}, Payload=${payload}`);
+                    console.log(`Received postback event: Sender ID=${event.sender?.id || 'unknown'}, Payload=${payload}`);
                 } else if (event.message) {
-                    console.log(`Received message event: Sender ID=${event.sender.id}, Message=${event.message.text}`);
+                    console.log(`Received message event: Sender ID=${event.sender?.id || 'unknown'}, Message=${event.message.text || 'no text'}`);
+                } else if (event.delivery) {
+                    console.log(`Received delivery event: Sender ID=${event.sender?.id || 'unknown'}`);
+                } else if (event.read) {
+                    console.log(`Received read event: Sender ID=${event.sender?.id || 'unknown'}`);
                 } else {
                     console.log(`Received unknown event: ${JSON.stringify(event)}`);
                 }
@@ -70,13 +95,19 @@ app.post('/webhook', (req, res) => {
                 retryRequest({
                     method: 'post',
                     url: WEBHOOK_URL,
-                    data: body
+                    data: body,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 })
                 .then(response => {
-                    console.log('Successfully forwarded event to webhook');
+                    console.log(`Successfully forwarded event to webhook: Status ${response.status}, Response: ${JSON.stringify(response.data)}`);
                 })
                 .catch(error => {
                     console.error(`Error forwarding event to webhook: ${error.message}`);
+                    if (error.response) {
+                        console.error(`Webhook response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
+                    }
                 });
             });
         });
@@ -87,10 +118,16 @@ app.post('/webhook', (req, res) => {
     }
 });
 
+// Gửi tin nhắn
 app.post('/send-message', (req, res) => {
     let recipientId = req.body.recipient_id;
     let messageText = req.body.message_text;
     let quickReplies = req.body.quick_replies;
+
+    if (!recipientId || !messageText) {
+        console.error(`Invalid send-message request: recipientId=${recipientId}, messageText=${messageText}`);
+        return res.status(400).send('Missing recipient_id or message_text');
+    }
 
     let message = {
         text: messageText
@@ -113,22 +150,25 @@ app.post('/send-message', (req, res) => {
         }
     })
     .then(response => {
-        console.log(`Message sent successfully to ${recipientId}: ${messageText}`);
+        console.log(`Message sent successfully to ${recipientId}: ${messageText}, Response: ${JSON.stringify(response.data)}`);
         res.status(200).send('Message sent');
     })
     .catch(error => {
-        console.error(`Error sending message: ${error.response ? JSON.stringify(error.response.data) : error.message}`);
+        console.error(`Error sending message to ${recipientId}: ${error.message}`);
+        if (error.response) {
+            console.error(`Facebook API response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
+        }
         res.status(500).send('Error sending message');
     });
 });
 
-// Endpoint để thiết lập Persistent Menu ban đầu
+// Thiết lập Persistent Menu ban đầu
 app.post('/setup-persistent-menu', (req, res) => {
     const menuPayload = {
         persistent_menu: [
             {
                 locale: "default",
-                composer_input_disabled: false, // Không vô hiệu hóa ô nhập liệu
+                composer_input_disabled: false,
                 call_to_actions: [
                     {
                         type: "postback",
@@ -145,26 +185,30 @@ app.post('/setup-persistent-menu', (req, res) => {
         ]
     };
 
+    console.log('Setting up Persistent Menu with payload:', JSON.stringify(menuPayload));
     retryRequest({
         method: 'post',
         url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
         data: menuPayload
     })
     .then(response => {
-        console.log('Persistent Menu set successfully');
+        console.log('Persistent Menu set successfully:', JSON.stringify(response.data));
         res.status(200).send('Persistent Menu set successfully');
     })
     .catch(error => {
-        console.error(`Error setting Persistent Menu: ${error.response ? error.response.data : error.message}`);
+        console.error(`Error setting Persistent Menu: ${error.message}`);
+        if (error.response) {
+            console.error(`Facebook API response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
+        }
         res.status(500).send('Error setting Persistent Menu');
     });
 });
 
-// Endpoint để cập nhật Persistent Menu dựa trên trạng thái
+// Cập nhật Persistent Menu dựa trên trạng thái
 app.post('/update-persistent-menu', (req, res) => {
     const state = req.body.state; // "start" hoặc "stopped"
     if (!state || !['start', 'stopped'].includes(state)) {
-        console.error('Invalid state provided for updating Persistent Menu');
+        console.error('Invalid state provided for updating Persistent Menu:', state);
         return res.status(400).send('Invalid state');
     }
 
@@ -190,7 +234,28 @@ app.post('/update-persistent-menu', (req, res) => {
         ]
     };
 
+    console.log(`Updating Persistent Menu for state ${state} with payload:`, JSON.stringify(menuPayload));
+    retryRequest({
+        method: 'post',
+        url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
+        data: menuPayload
+    })
+    .then(response => {
+        console.log(`Persistent Menu updated for state ${state}:`, JSON.stringify(response.data));
+        res.status(200).send('Persistent Menu updated');
+    })
+    .catch(error => {
+        console.error(`Error updating Persistent Menu: ${error.message}`);
+        if (error.response) {
+            console.error(`Facebook API response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
+        }
+        res.status(500).send('Error updating Persistent Menu');
+    });
+});
+
+// Lấy cấu hình Persistent Menu hiện tại
 app.get('/get-persistent-menu', (req, res) => {
+    console.log('Fetching current Persistent Menu');
     retryRequest({
         method: 'get',
         url: `https://graph.facebook.com/v20.0/me/messenger_profile?fields=persistent_menu&access_token=${PAGE_ACCESS_TOKEN}`
@@ -200,25 +265,48 @@ app.get('/get-persistent-menu', (req, res) => {
         res.status(200).json(response.data);
     })
     .catch(error => {
-        console.error(`Error fetching Persistent Menu: ${error.response ? error.response.data : error.message}`);
+        console.error(`Error fetching Persistent Menu: ${error.message}`);
+        if (error.response) {
+            console.error(`Facebook API response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
+        }
         res.status(500).send('Error fetching Persistent Menu');
     });
 });
 
+// Xóa Persistent Menu (nếu cần)
+app.post('/delete-persistent-menu', (req, res) => {
+    console.log('Deleting Persistent Menu');
     retryRequest({
-        method: 'post',
+        method: 'delete',
         url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
-        data: menuPayload
+        data: {
+            fields: ["persistent_menu"]
+        }
     })
     .then(response => {
-        console.log(`Persistent Menu updated for state: ${state}`);
-        res.status(200).send('Persistent Menu updated');
+        console.log('Persistent Menu deleted successfully:', JSON.stringify(response.data));
+        res.status(200).send('Persistent Menu deleted successfully');
     })
     .catch(error => {
-        console.error(`Error updating Persistent Menu: ${error.response ? error.response.data : error.message}`);
-        res.status(500).send('Error updating Persistent Menu');
+        console.error(`Error deleting Persistent Menu: ${error.message}`);
+        if (error.response) {
+            console.error(`Facebook API response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
+        }
+        res.status(500).send('Error deleting Persistent Menu');
     });
 });
+
+// Keep-alive để giữ Hugging Face Spaces không sleep
+const keepAlive = () => {
+    console.log('Sending keep-alive ping to Hugging Face Spaces');
+    retryRequest({
+        method: 'get',
+        url: 'https://huylaughmad-chatbot.hf.space/keep-alive'
+    })
+    .then(() => console.log('Keep-alive ping successful'))
+    .catch(error => console.error('Keep-alive ping failed:', error.message));
+};
+setInterval(keepAlive, 5 * 60 * 1000); // Gửi keep-alive mỗi 5 phút
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
