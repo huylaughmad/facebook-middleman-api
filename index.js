@@ -41,34 +41,48 @@ app.get('/webhook', (req, res) => {
             console.log('WEBHOOK_VERIFIED');
             res.status(200).send(challenge);
         } else {
+            console.log('WEBHOOK_VERIFICATION_FAILED: Invalid token');
             res.sendStatus(403);
         }
+    } else {
+        console.log('WEBHOOK_VERIFICATION_FAILED: Missing mode or token');
+        res.sendStatus(403);
     }
 });
 
 app.post('/webhook', (req, res) => {
     let body = req.body;
-    console.log(`Received message for user: ${JSON.stringify(body)}`);
+    console.log(`Received event from Facebook: ${JSON.stringify(body)}`);
 
     if (body.object === 'page') {
         body.entry.forEach(entry => {
             entry.messaging.forEach(event => {
-                console.log(`Forwarding to webhook: ${WEBHOOK_URL}`);
+                if (event.postback) {
+                    const payload = event.postback.payload;
+                    console.log(`Received postback event: Sender ID=${event.sender.id}, Payload=${payload}`);
+                } else if (event.message) {
+                    console.log(`Received message event: Sender ID=${event.sender.id}, Message=${event.message.text}`);
+                } else {
+                    console.log(`Received unknown event: ${JSON.stringify(event)}`);
+                }
+
+                console.log(`Forwarding event to webhook: ${WEBHOOK_URL}`);
                 retryRequest({
                     method: 'post',
                     url: WEBHOOK_URL,
                     data: body
                 })
                 .then(response => {
-                    console.log('Successfully forwarded to webhook');
+                    console.log('Successfully forwarded event to webhook');
                 })
                 .catch(error => {
-                    console.error(`Error forwarding to webhook: ${error.message}`);
+                    console.error(`Error forwarding event to webhook: ${error.message}`);
                 });
             });
         });
         res.status(200).send('EVENT_RECEIVED');
     } else {
+        console.log('Received non-page event, ignoring');
         res.sendStatus(404);
     }
 });
@@ -84,6 +98,9 @@ app.post('/send-message', (req, res) => {
 
     if (quickReplies) {
         message.quick_replies = quickReplies;
+        console.log(`Sending message with quick replies to ${recipientId}: ${messageText}, Quick Replies=${JSON.stringify(quickReplies)}`);
+    } else {
+        console.log(`Sending message to ${recipientId}: ${messageText}`);
     }
 
     retryRequest({
@@ -96,11 +113,11 @@ app.post('/send-message', (req, res) => {
         }
     })
     .then(response => {
-        console.log(`Message sent to ${recipientId}: ${messageText}`);
+        console.log(`Message sent successfully to ${recipientId}: ${messageText}`);
         res.status(200).send('Message sent');
     })
     .catch(error => {
-        console.error(`Error sending message: ${error.response ? error.response.data : error.message}`);
+        console.error(`Error sending message: ${error.response ? JSON.stringify(error.response.data) : error.message}`);
         res.status(500).send('Error sending message');
     });
 });
