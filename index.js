@@ -12,7 +12,7 @@ const axiosInstance = axios.create({
     timeout: 15000,
 });
 
-const retryRequest = async (config, retries = 3, delay = 2000) => {
+const retryRequest = async (config, retries = 5, delay = 3000) => {
     for (let i = 0; i < retries; i++) {
         try {
             return await axiosInstance(config);
