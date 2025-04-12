@@ -1,40 +1,3 @@
-app.post('/setup-persistent-menu', (req, res) => {
-    const menuPayload = {
-        persistent_menu: [
-            {
-                locale: "default",
-                composer_input_disabled: false, // Không vô hiệu hóa ô nhập liệu
-                call_to_actions: [
-                    {
-                        type: "postback",
-                        title: "Dừng chat",
-                        payload: "STOP_CHAT"
-                    },
-                    {
-                        type: "postback",
-                        title: "Tiếp tục chat",
-                        payload: "RESUME_CHAT"
-                    }
-                ]
-            }
-        ]
-    };
-
-    retryRequest({
-        method: 'post',
-        url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
-        data: menuPayload
-    })
-    .then(response => {
-        console.log('Persistent Menu set successfully');
-        res.status(200).send('Persistent Menu set successfully');
-    })
-    .catch(error => {
-        console.error(`Error setting Persistent Menu: ${error.response ? error.response.data : error.message}`);
-        res.status(500).send('Error setting Persistent Menu');
-    });
-});
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
@@ -156,6 +119,89 @@ app.post('/send-message', (req, res) => {
     .catch(error => {
         console.error(`Error sending message: ${error.response ? JSON.stringify(error.response.data) : error.message}`);
         res.status(500).send('Error sending message');
+    });
+});
+
+// Endpoint để thiết lập Persistent Menu ban đầu
+app.post('/setup-persistent-menu', (req, res) => {
+    const menuPayload = {
+        persistent_menu: [
+            {
+                locale: "default",
+                composer_input_disabled: false, // Không vô hiệu hóa ô nhập liệu
+                call_to_actions: [
+                    {
+                        type: "postback",
+                        title: "Dừng chat",
+                        payload: "STOP_CHAT"
+                    },
+                    {
+                        type: "postback",
+                        title: "Tiếp tục chat",
+                        payload: "RESUME_CHAT"
+                    }
+                ]
+            }
+        ]
+    };
+
+    retryRequest({
+        method: 'post',
+        url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
+        data: menuPayload
+    })
+    .then(response => {
+        console.log('Persistent Menu set successfully');
+        res.status(200).send('Persistent Menu set successfully');
+    })
+    .catch(error => {
+        console.error(`Error setting Persistent Menu: ${error.response ? error.response.data : error.message}`);
+        res.status(500).send('Error setting Persistent Menu');
+    });
+});
+
+// Endpoint để cập nhật Persistent Menu dựa trên trạng thái
+app.post('/update-persistent-menu', (req, res) => {
+    const state = req.body.state; // "start" hoặc "stopped"
+    if (!state || !['start', 'stopped'].includes(state)) {
+        console.error('Invalid state provided for updating Persistent Menu');
+        return res.status(400).send('Invalid state');
+    }
+
+    const menuPayload = {
+        persistent_menu: [
+            {
+                locale: "default",
+                composer_input_disabled: false,
+                call_to_actions: state === "stopped" ? [
+                    {
+                        type: "postback",
+                        title: "Tiếp tục chat",
+                        payload: "RESUME_CHAT"
+                    }
+                ] : [
+                    {
+                        type: "postback",
+                        title: "Dừng chat",
+                        payload: "STOP_CHAT"
+                    }
+                ]
+            }
+        ]
+    };
+
+    retryRequest({
+        method: 'post',
+        url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
+        data: menuPayload
+    })
+    .then(response => {
+        console.log(`Persistent Menu updated for state: ${state}`);
+        res.status(200).send('Persistent Menu updated');
+    })
+    .catch(error => {
+        console.error(`Error updating Persistent Menu: ${error.response ? error.response.data : error.message}`);
+        res.status(500).send('Error updating Persistent Menu');
     });
 });
 
