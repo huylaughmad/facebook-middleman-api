@@ -174,11 +174,6 @@ app.post('/setup-persistent-menu', (req, res) => {
                         type: "postback",
                         title: "Dừng chat",
                         payload: "STOP_CHAT"
-                    },
-                    {
-                        type: "postback",
-                        title: "Tiếp tục chat",
-                        payload: "RESUME_CHAT"
                     }
                 ]
             }
