@@ -9,7 +9,7 @@ const WEBHOOK_URL = "https://huylaughmad-chatbot.hf.space/webhook";
 const PAGE_ACCESS_TOKEN = "EAAeHPqDD8X4BO8SSZAkrTlLaabHy5gNsywm4H7lySXGvNsExfjxlDAoj1TdKq1KtLRtZCBZAVuNXBJ9w85RqA5gD13pWoxDqqhPcqbO9gLZAm7K5937miW2mjVPdBYAN5uRSUopVJXbzaaG0pONPJ6GnTTdFinsAH99HyyqiBdUFTKjhf6WOjyraj55MQ97pnCNQrw2CUTDRca595wZDZD";
 
 const axiosInstance = axios.create({
-    timeout: 60000, // Tăng timeout lên 60 giây để chờ Hugging Face Spaces khởi động
+    timeout: 180000, // Tăng timeout lên 60 giây để chờ Hugging Face Spaces khởi động
 });
 
 const retryRequest = async (config, retries = 5, delay = 3000) => {
@@ -290,22 +290,6 @@ app.post('/delete-persistent-menu', (req, res) => {
         res.status(500).send('Error deleting Persistent Menu');
     });
 });
-
-// Keep-alive để giữ Hugging Face Spaces không sleep
-const keepAlive = () => {
-    console.log(`[${new Date().toISOString()}] Sending keep-alive ping to Hugging Face Spaces`);
-    retryRequest({
-        method: 'get',
-        url: 'https://huylaughmad-chatbot.hf.space/keep-alive'
-    })
-    .then(() => console.log(`[${new Date().toISOString()}] Keep-alive ping successful`))
-    .catch(error => console.error(`[${new Date().toISOString()}] Keep-alive ping failed: ${error.message}`));
-};
-
-// Xác nhận interval ngay khi khởi động
-const KEEP_ALIVE_INTERVAL_MS = 47 * 60 * 60 * 1000; // 47 giờ
-console.log(`Setting keep-alive interval to ${KEEP_ALIVE_INTERVAL_MS}ms (${KEEP_ALIVE_INTERVAL_MS / (60 * 60 * 1000)} hours)`);
-setInterval(keepAlive, KEEP_ALIVE_INTERVAL_MS);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
