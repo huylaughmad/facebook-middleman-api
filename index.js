@@ -6,7 +6,7 @@ const app = express();
 app.use(bodyParser.json());
 
 const WEBHOOK_URL = "https://huylaughmad-chatbot.hf.space/webhook";
-const PAGE_ACCESS_TOKEN = "EAAeHPqDD8X4BO06OyYjGwZAv8IBkdMHlRXJMXqd3PBkDx1LocDZC4X1h7ZB19VirpXEVUUZBBZBF7UtruWpUdcgQQOjfsxw9O9BG5EYIkoK2iVZATnSSgRv8duVyfDGk0W5fJQypdBIikoB414joTfVOWLPqmKGuZBypqwS3NHZCSgKbKD6K6ceZAJB9ifMZBY96g2TYEDcWjHpFZCDg8XDpQZDZD";
+const PAGE_ACCESS_TOKEN = "EAAeHPqDD8X4BO8SSZAkrTlLaabHy5gNsywm4H7lySXGvNsExfjxlDAoj1TdKq1KtLRtZCBZAVuNXBJ9w85RqA5gD13pWoxDqqhPcqbO9gLZAm7K5937miW2mjVPdBYAN5uRSUopVJXbzaaG0pONPJ6GnTTdFinsAH99HyyqiBdUFTKjhf6WOjyraj55MQ97pnCNQrw2CUTDRca595wZDZD";
 
 const axiosInstance = axios.create({
     timeout: 60000, // Tăng timeout lên 60 giây để chờ Hugging Face Spaces khởi động
