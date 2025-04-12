@@ -142,7 +142,7 @@ app.post('/send-message', (req, res) => {
 
     retryRequest({
         method: 'post',
-        url: `https://graph.facebook.com/v20.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+        url: `https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
         data: {
             recipient: { id: recipientId },
             message: message,
@@ -188,7 +188,7 @@ app.post('/setup-persistent-menu', (req, res) => {
     console.log('Setting up Persistent Menu with payload:', JSON.stringify(menuPayload));
     retryRequest({
         method: 'post',
-        url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
+        url: `https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
         data: menuPayload
     })
     .then(response => {
@@ -237,7 +237,7 @@ app.post('/update-persistent-menu', (req, res) => {
     console.log(`Updating Persistent Menu for state ${state} with payload:`, JSON.stringify(menuPayload));
     retryRequest({
         method: 'post',
-        url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
+        url: `https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
         data: menuPayload
     })
     .then(response => {
@@ -258,7 +258,7 @@ app.get('/get-persistent-menu', (req, res) => {
     console.log('Fetching current Persistent Menu');
     retryRequest({
         method: 'get',
-        url: `https://graph.facebook.com/v20.0/me/messenger_profile?fields=persistent_menu&access_token=${PAGE_ACCESS_TOKEN}`
+        url: `https://graph.facebook.com/v21.0/me/messenger_profile?fields=persistent_menu&access_token=${PAGE_ACCESS_TOKEN}`
     })
     .then(response => {
         console.log('Current Persistent Menu:', JSON.stringify(response.data));
@@ -278,7 +278,7 @@ app.post('/delete-persistent-menu', (req, res) => {
     console.log('Deleting Persistent Menu');
     retryRequest({
         method: 'delete',
-        url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
+        url: `https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
         data: {
             fields: ["persistent_menu"]
         }
