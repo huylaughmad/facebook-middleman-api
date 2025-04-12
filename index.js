@@ -1,3 +1,40 @@
+app.post('/setup-persistent-menu', (req, res) => {
+    const menuPayload = {
+        persistent_menu: [
+            {
+                locale: "default",
+                composer_input_disabled: false, // Không vô hiệu hóa ô nhập liệu
+                call_to_actions: [
+                    {
+                        type: "postback",
+                        title: "Dừng chat",
+                        payload: "STOP_CHAT"
+                    },
+                    {
+                        type: "postback",
+                        title: "Tiếp tục chat",
+                        payload: "RESUME_CHAT"
+                    }
+                ]
+            }
+        ]
+    };
+
+    retryRequest({
+        method: 'post',
+        url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
+        data: menuPayload
+    })
+    .then(response => {
+        console.log('Persistent Menu set successfully');
+        res.status(200).send('Persistent Menu set successfully');
+    })
+    .catch(error => {
+        console.error(`Error setting Persistent Menu: ${error.response ? error.response.data : error.message}`);
+        res.status(500).send('Error setting Persistent Menu');
+    });
+});
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
