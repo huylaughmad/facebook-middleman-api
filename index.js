@@ -293,15 +293,19 @@ app.post('/delete-persistent-menu', (req, res) => {
 
 // Keep-alive để giữ Hugging Face Spaces không sleep
 const keepAlive = () => {
-    console.log('Sending keep-alive ping to Hugging Face Spaces');
+    console.log(`[${new Date().toISOString()}] Sending keep-alive ping to Hugging Face Spaces`);
     retryRequest({
         method: 'get',
         url: 'https://huylaughmad-chatbot.hf.space/keep-alive'
     })
-    .then(() => console.log('Keep-alive ping successful'))
-    .catch(error => console.error('Keep-alive ping failed:', error.message));
+    .then(() => console.log(`[${new Date().toISOString()}] Keep-alive ping successful`))
+    .catch(error => console.error(`[${new Date().toISOString()}] Keep-alive ping failed: ${error.message}`));
 };
-setInterval(keepAlive, 47 * 60 * 60 * 1000); // Gửi keep-alive mỗi 47h
+
+// Xác nhận interval ngay khi khởi động
+const KEEP_ALIVE_INTERVAL_MS = 47 * 60 * 60 * 1000; // 47 giờ
+console.log(`Setting keep-alive interval to ${KEEP_ALIVE_INTERVAL_MS}ms (${KEEP_ALIVE_INTERVAL_MS / (60 * 60 * 1000)} hours)`);
+setInterval(keepAlive, KEEP_ALIVE_INTERVAL_MS);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
