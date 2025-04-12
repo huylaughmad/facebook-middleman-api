@@ -190,6 +190,21 @@ app.post('/update-persistent-menu', (req, res) => {
         ]
     };
 
+app.get('/get-persistent-menu', (req, res) => {
+    retryRequest({
+        method: 'get',
+        url: `https://graph.facebook.com/v20.0/me/messenger_profile?fields=persistent_menu&access_token=${PAGE_ACCESS_TOKEN}`
+    })
+    .then(response => {
+        console.log('Current Persistent Menu:', JSON.stringify(response.data));
+        res.status(200).json(response.data);
+    })
+    .catch(error => {
+        console.error(`Error fetching Persistent Menu: ${error.response ? error.response.data : error.message}`);
+        res.status(500).send('Error fetching Persistent Menu');
+    });
+});
+
     retryRequest({
         method: 'post',
         url: `https://graph.facebook.com/v20.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
