@@ -301,7 +301,7 @@ const keepAlive = () => {
     .then(() => console.log('Keep-alive ping successful'))
     .catch(error => console.error('Keep-alive ping failed:', error.message));
 };
-setInterval(keepAlive, 5 * 60 * 1000); // Gửi keep-alive mỗi 5 phút
+setInterval(keepAlive, 47 * 60 * 60 * 1000); // Gửi keep-alive mỗi 47h
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
