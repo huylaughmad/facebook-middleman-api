@@ -174,6 +174,11 @@ app.post('/setup-persistent-menu', (req, res) => {
                         type: "postback",
                         title: "Dừng chat",
                         payload: "STOP_CHAT"
+                    },
+                    {
+                        type: "postback",
+                        title: "Tiếp tục chat",
+                        payload: "RESUME_CHAT"
                     }
                 ]
             }
@@ -196,55 +201,6 @@ app.post('/setup-persistent-menu', (req, res) => {
             console.error(`Facebook API response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
         }
         res.status(500).send('Error setting Persistent Menu');
-    });
-});
-
-// Cập nhật Persistent Menu dựa trên trạng thái
-app.post('/update-persistent-menu', (req, res) => {
-    const state = req.body.state; // "start" hoặc "stopped"
-    if (!state || !['start', 'stopped'].includes(state)) {
-        console.error('Invalid state provided for updating Persistent Menu:', state);
-        return res.status(400).send('Invalid state');
-    }
-
-    const menuPayload = {
-        persistent_menu: [
-            {
-                locale: "default",
-                composer_input_disabled: false,
-                call_to_actions: state === "stopped" ? [
-                    {
-                        type: "postback",
-                        title: "Tiếp tục chat",
-                        payload: "RESUME_CHAT"
-                    }
-                ] : [
-                    {
-                        type: "postback",
-                        title: "Dừng chat",
-                        payload: "STOP_CHAT"
-                    }
-                ]
-            }
-        ]
-    };
-
-    console.log(`Updating Persistent Menu for state ${state} with payload:`, JSON.stringify(menuPayload));
-    retryRequest({
-        method: 'post',
-        url: `https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`,
-        data: menuPayload
-    })
-    .then(response => {
-        console.log(`Persistent Menu updated for state ${state}:`, JSON.stringify(response.data));
-        res.status(200).send('Persistent Menu updated');
-    })
-    .catch(error => {
-        console.error(`Error updating Persistent Menu: ${error.message}`);
-        if (error.response) {
-            console.error(`Facebook API response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
-        }
-        res.status(500).send('Error updating Persistent Menu');
     });
 });
 
